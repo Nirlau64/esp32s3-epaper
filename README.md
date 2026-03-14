@@ -1,22 +1,22 @@
-﻿# ðŸ“” Technisches Handbuch: ESP32-S3 e-Paper Multimedia-Station
+﻿# Technisches Handbuch: ESP32-S3 e-Paper Multimedia-Station
 
 **Projekt:** Drahtlose Bild- und Textsteuerung mit HTML-Rendering (Robust-Version)  
-**Hardware:** Waveshare ESP32-S3-ePaper-3.97 (800Ã—480 Pixel)
+**Hardware:** Waveshare ESP32-S3-ePaper-3.97 (800—480 Pixel)
 
 ---
 
-## 1. SystemÃ¼bersicht
-Dieses System ermÃ¶glicht die drahtlose Ãœbertragung von Inhalten auf ein bistabiles e-Paper Display. Dank **WiFi Power Save Mode** bleibt das GerÃ¤t permanent erreichbar, wÃ¤hrend der Stromverbrauch im Standby reduziert wird.
+## 1. Systemübersicht
+Dieses System ermöglicht die drahtlose Ãœbertragung von Inhalten auf ein bistabiles e-Paper Display. Dank **WiFi Power Save Mode** bleibt das GerÃ¤t permanent erreichbar, wÃ¤hrend der Stromverbrauch im Standby reduziert wird.
 
 **Highlights der Robust-Version:**
-*   **Multipart-Upload:** Nutzt den nativen ESP32-Upload-Handler fÃ¼r maximale StabilitÃ¤t.
+*   **Multipart-Upload:** Nutzt den nativen ESP32-Upload-Handler für maximale Stabilität.
 *   **mDNS UnterstÃ¼tzung:** Erreichbar unter `http://epaper.local`.
 *   **Automatischer Reconnect:** Stellt die Verbindung nach Router-Neustarts selbststÃ¤ndig wieder her.
 
 ---
 
 ## 2. Einrichtung der Software & Treiber
-Um das System zu programmieren, mÃ¼ssen die Display-Treiber korrekt eingebunden sein.
+Um das System zu programmieren, müssen die Display-Treiber korrekt eingebunden sein.
 
 ### 2.1 Software-Basis
 1.  **Arduino IDE:** [arduino.cc](https://www.arduino.cc/en/software)
@@ -24,9 +24,9 @@ Um das System zu programmieren, mÃ¼ssen die Display-Treiber korrekt eingebunde
 3.  **Board-Manager:** Installieren Sie das Paket **"esp32"**.
 
 ### 2.2 Die Treiber-Dateien (WICHTIG!)
-Kopieren Sie aus der Waveshare-ZIP-Datei aus dem Ordner `Arduino/examples/02_E-Paper_Example` alle Dateien (auÃŸer der .ino) in Ihren Projektordner. Ihr Ordner muss am Ende Dateien wie `EPD_3in97.h`, `GUI_Paint.h` und diverse `font*.cpp` enthalten.
+Kopieren Sie aus der Waveshare-ZIP-Datei aus dem Ordner `Arduino/examples/02_E-Paper_Example` alle Dateien (außer der .ino) in Ihren Projektordner. Ihr Ordner muss am Ende Dateien wie `EPD_3in97.h`, `GUI_Paint.h` und diverse `font*.cpp` enthalten.
 
-### 2.3 IDE-Einstellungen (MenÃ¼: Werkzeuge)
+### 2.3 IDE-Einstellungen (Menü: Werkzeuge)
 *   **Board:** `ESP32S3 Dev Module`
 *   **USB CDC On Boot:** `Enabled`
 *   **Flash Size:** `16MB`
@@ -187,6 +187,6 @@ void loop() {
 
 ## 4. Bedienung
 1.  Rufen Sie `http://epaper.local` auf.
-2.  Gestalten Sie Text mit HTML-Tags oder wÃ¤hlen Sie ein Bild aus.
+2.  Gestalten Sie Text mit HTML-Tags oder wählen Sie ein Bild aus.
 3.  Klicken Sie auf den entsprechenden Sende-Button. Das Display aktualisiert sich automatisch.
 
