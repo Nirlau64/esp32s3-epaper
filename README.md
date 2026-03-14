@@ -24,7 +24,7 @@ Um das System zu programmieren, müssen die Display-Treiber korrekt eingebunden 
 3.  **Board-Manager:** Installieren Sie das Paket **"esp32"**.
 
 ### 2.2 Die Treiber-Dateien (WICHTIG!)
-Kopieren Sie aus der Waveshare-ZIP-Datei aus dem Ordner `Arduino/examples/02_E-Paper_Example` alle Dateien (außer der .ino) in Ihren Projektordner. Ihr Ordner muss am Ende Dateien wie `EPD_3in97.h`, `GUI_Paint.h` und diverse `font*.cpp` enthalten.
+Kopieren Sie aus der Waveshare-ZIP-Datei aus dem Ordner `Arduino/examples/02_E-Paper_Example` https://github.com/waveshareteam/ESP32-S3-ePaper-3.97/tree/main/Arduino/examples/02_E-Paper_Example alle Dateien (außer der .ino) in Ihren Projektordner. Ihr Ordner muss am Ende Dateien wie `EPD_3in97.h`, `GUI_Paint.h` und diverse `font*.cpp` enthalten.
 
 ### 2.3 IDE-Einstellungen (Menü: Werkzeuge)
 *   **Board:** `ESP32S3 Dev Module`
