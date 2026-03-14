@@ -10,7 +10,7 @@ Dieses System ermöglicht die drahtlose Ãœbertragung von Inhalten auf ein bist
 
 **Highlights der Robust-Version:**
 *   **Multipart-Upload:** Nutzt den nativen ESP32-Upload-Handler für maximale Stabilität.
-*   **mDNS UnterstÃ¼tzung:** Erreichbar unter `http://epaper.local`.
+*   **mDNS Unterstützung:** Erreichbar unter `http://epaper.local`.
 *   **Automatischer Reconnect:** Stellt die Verbindung nach Router-Neustarts selbststÃ¤ndig wieder her.
 
 ---
