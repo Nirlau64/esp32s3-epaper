@@ -6,7 +6,7 @@
 ---
 
 ## 1. Systemübersicht
-Dieses System ermöglicht die drahtlose Ãœbertragung von Inhalten auf ein bistabiles e-Paper Display. Dank **WiFi Power Save Mode** bleibt das GerÃ¤t permanent erreichbar, wÃ¤hrend der Stromverbrauch im Standby reduziert wird.
+Dieses System ermöglicht die drahtlose übertragung von Inhalten auf ein bistabiles e-Paper Display. Dank **WiFi Power Save Mode** bleibt das Gerät permanent erreichbar, während der Stromverbrauch im Standby reduziert wird.
 
 **Highlights der Robust-Version:**
 *   **Multipart-Upload:** Nutzt den nativen ESP32-Upload-Handler für maximale Stabilität.
