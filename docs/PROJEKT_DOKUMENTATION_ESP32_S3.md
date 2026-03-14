@@ -1,39 +1,42 @@
 # 📔 Technisches Handbuch: ESP32-S3 e-Paper Multimedia-Station
 
-**Projekt:** Drahtlose Bild- und Textsteuerung mit HTML-Rendering  
+**Projekt:** Drahtlose Bild- und Textsteuerung mit HTML-Rendering (Robust-Version)  
 **Hardware:** Waveshare ESP32-S3-ePaper-3.97 (800×480 Pixel)
 
 ---
 
 ## 1. Systemübersicht
-Dieses System ermöglicht die drahtlose Übertragung von Inhalten auf ein bistabiles e-Paper Display. Da das Display Bildinformationen ohne Strom beibehält, eignet es sich ideal als smarter Bilderrahmen oder Informations-Dashboard.
+Dieses System ermöglicht die drahtlose Übertragung von Inhalten auf ein bistabiles e-Paper Display. Dank **WiFi Power Save Mode** bleibt das Gerät permanent erreichbar, während der Stromverbrauch im Standby reduziert wird.
 
-**Besonderheit:** Dank **WiFi Power Save Mode** (DTIM-basiertes Modem-Sleep) bleibt das Gerät permanent im WLAN erreichbar, während der Stromverbrauch im Standby reduziert wird. Der integrierte LiPo-Akku (typisch ~1200–1500 mAh) ermöglicht so eine verlängerte Betriebsdauer ohne Nachladen.
-
-> **Hardware-Hinweis:** Mikrofon (GPIO 15) und Lautsprecher (GPIO 7) sind hardwareseitig vorhanden, werden in dieser Firmware jedoch nicht genutzt. Sie stehen für zukünftige Erweiterungen zur Verfügung.
+**Highlights der Robust-Version:**
+*   **Multipart-Upload:** Nutzt den nativen ESP32-Upload-Handler für maximale Stabilität.
+*   **mDNS Unterstützung:** Erreichbar unter `http://epaper.local`.
+*   **Automatischer Reconnect:** Stellt die Verbindung nach Router-Neustarts selbstständig wieder her.
 
 ---
 
-## 2. Einrichtung der Software (Einmalig)
-Um das System zu programmieren, wird die **Arduino IDE** benötigt.
+## 2. Einrichtung der Software & Treiber
+Um das System zu programmieren, müssen die Display-Treiber korrekt eingebunden sein.
 
-1.  **Board-Support:** In den Voreinstellungen (`Datei -> Voreinstellungen`) diese URL hinzufügen:  
-    `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
-2.  **Board-Manager:** Suchen Sie unter `Tools -> Board -> Boardverwalter` nach **"esp32"** und installieren Sie das Paket (Version 3.x empfohlen).
-3.  **Treiber-Basis:** Laden Sie das offizielle Treiber-Paket herunter: [GitHub Repository](https://github.com/waveshareteam/ESP32-S3-ePaper-3.97). Klicken Sie auf `Code` -> `Download ZIP` und entpacken Sie diese.
-4.  **Wichtige IDE-Einstellungen:**
-    *   Board: `ESP32S3 Dev Module`
-    *   USB CDC On Boot: `Enabled`
-    *   Flash Size: `16MB`
-    *   PSRAM: **"OPI PSRAM"** (Zwingend erforderlich!)
+### 2.1 Software-Basis
+1.  **Arduino IDE:** [arduino.cc](https://www.arduino.cc/en/software)
+2.  **ESP32 Support URL:** `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
+3.  **Board-Manager:** Installieren Sie das Paket **"esp32"**.
+
+### 2.2 Die Treiber-Dateien (WICHTIG!)
+Kopieren Sie aus der Waveshare-ZIP-Datei aus dem Ordner `Arduino/examples/02_E-Paper_Example` alle Dateien (außer der .ino) in Ihren Projektordner. Ihr Ordner muss am Ende Dateien wie `EPD_3in97.h`, `GUI_Paint.h` und diverse `font*.cpp` enthalten.
+
+### 2.3 IDE-Einstellungen (Menü: Werkzeuge)
+*   **Board:** `ESP32S3 Dev Module`
+*   **USB CDC On Boot:** `Enabled`
+*   **Flash Size:** `16MB`
+*   **PSRAM:** **"OPI PSRAM"** (Zwingend erforderlich!)
 
 ---
 
 ## 3. Der Steuerungs-Code (Sketch)
 
-Kopieren Sie diesen Code in Ihre Arduino IDE. Tragen Sie Ihre WLAN-Daten in Zeile 10 & 11 ein.
-
-> **Wichtig:** Je nach Treiberversion erwartet `EPD_3IN97_Init` eventuell einen Parameter. Sollte der Compiler einen Fehler melden, ändern Sie den Aufruf in `setup()` zu `EPD_3IN97_Init(0);` (0 = Schwarz/Weiß Modus).
+Kopieren Sie diesen Code in Ihre Haupt-Datei. Tragen Sie Ihre WLAN-Daten in Zeile 10 & 11 ein.
 
 ```cpp
 #include <WiFi.h>
@@ -48,8 +51,8 @@ const char* password = "IHR_PASSWORT";
 
 WebServer server(80);
 UBYTE *BlackImage;
+int uploadTotal = 0;
 
-// --- WiFi-Management ---
 unsigned long lastWiFiCheck = 0;
 const unsigned long WIFI_CHECK_INTERVAL = 30000; 
 
@@ -58,35 +61,29 @@ const char INDEX_HTML[] PROGMEM = R"=====(
 <style>
   body{font-family:Segoe UI, sans-serif; text-align:center; padding:20px; background:#f4f7f6; color:#333;}
   .card{background:white; padding:25px; border-radius:15px; box-shadow:0 10px 25px rgba(0,0,0,0.1); max-width:550px; margin:auto;}
-  h2{color:#007bff; margin-top:0;}
-  textarea{width:100%; height:120px; padding:12px; border-radius:8px; border:1px solid #ddd; font-family:monospace; box-sizing:border-box;}
-  button{width:100%; padding:14px; margin:10px 0; background:#007bff; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; transition:0.3s;}
-  button:hover{background:#0056b3;}
-  .section-label{text-align:left; font-weight:bold; margin-top:20px; font-size:14px; color:#666;}
-  #status{font-size:12px; color:#28a745; margin-top:10px; min-height:1em;}
+  textarea{width:100%; height:120px; padding:12px; border-radius:8px; border:1px solid #ddd; font-family:monospace; box-sizing:border-box; margin-bottom:10px;}
+  button{width:100%; padding:14px; margin:10px 0; background:#007bff; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;}
+  #status{font-size:12px; color:#28a745; margin-top:10px; font-weight:bold;}
 </style></head><body>
 <div class='card'>
-  <h2>E-Paper Control Panel</h2>
-  <div class='section-label'>FORMATIERTER TEXT (HTML)</div>
-  <textarea id='it' placeholder='<h1>Titel</h1><p>Text...</p>'><h1>Hallo!</h1><p>Geben Sie hier Text oder <b>HTML</b> ein.</p></textarea>
+  <h2>E-Paper Dashboard</h2>
+  <textarea id='it'><h1>Hallo!</h1><p>Geben Sie Text oder HTML ein.</p></textarea>
   <button onclick='sendT()'>Text übertragen</button>
-  <div style='margin:15px 0; border-top:1px solid #eee;'></div>
-  <div class='section-label'>BILD-UPLOAD (FOTO/GRAFIK)</div>
-  <input type='file' id='fi' accept='image/*' style='width:100%; padding:10px 0;'>
-  <button onclick='sendI()'>Bild optimieren & senden</button>
+  <hr style='margin:20px 0; border:0; border-top:1px solid #eee;'>
+  <input type='file' id='fi' accept='image/*'>
+  <button onclick='sendI()'>Bild senden</button>
   <div id='status'>System bereit.</div>
 </div>
 <canvas id='c' width='800' height='480' style='display:none;'></canvas>
 <script>
-const status = (m) => document.getElementById('status').innerText = m;
+const status = (m) => { document.getElementById('status').innerText = m; };
 function sendT() {
   const html = document.getElementById('it').value;
   const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="font-size:35px; padding:40px; color:black; background:white; font-family:sans-serif;">${html}</div></foreignObject></svg>`;
   const img = new Image();
   status('Rendere Text...');
-  img.onload = () => { ctx.drawImage(img, 0, 0); transmit(); };
-  img.onerror = () => status('Fehler: HTML enthält ungültige Zeichen.');
+  img.onload = () => { ctx.fillStyle="white"; ctx.fillRect(0,0,800,480); ctx.drawImage(img,0,0); transmit(); };
   img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
 }
 function sendI() {
@@ -108,40 +105,33 @@ function sendI() {
   reader.readAsDataURL(file);
 }
 function transmit() {
-  status('Optimiere mit Floyd-Steinberg Dithering...');
+  status('Optimiere Daten...');
   const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
-  const imageData = ctx.getImageData(0, 0, 800, 480);
-  const d = imageData.data;
-  const W = 800, H = 480;
-  const gray = new Float32Array(W * H);
+  const d = ctx.getImageData(0, 0, 800, 480).data;
+  const gray = new Float32Array(800 * 480);
   for (let i = 0; i < gray.length; i++) gray[i] = (d[i*4] + d[i*4+1] + d[i*4+2]) / 3;
-
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const idx = y * W + x;
+  for (let y = 0; y < 480; y++) {
+    for (let x = 0; x < 800; x++) {
+      const idx = y * 800 + x;
       const oldVal = gray[idx];
       const newVal = oldVal < 128 ? 0 : 255;
       gray[idx] = newVal;
       const err = oldVal - newVal;
-      if (x + 1 < W)               gray[idx + 1]     += err * 7 / 16;
-      if (y + 1 < H && x - 1 >= 0) gray[idx + W - 1] += err * 3 / 16;
-      if (y + 1 < H)               gray[idx + W]     += err * 5 / 16;
-      if (y + 1 < H && x + 1 < W)  gray[idx + W + 1] += err * 1 / 16;
+      if (x + 1 < 800) gray[idx + 1] += err * 7/16;
+      if (y + 1 < 480 && x - 1 >= 0) gray[idx + 800 - 1] += err * 3/16;
+      if (y + 1 < 480) gray[idx + 800] += err * 5/16;
+      if (y + 1 < 480 && x + 1 < 800) gray[idx + 800 + 1] += err * 1/16;
     }
   }
-
-  status('Übertrage Daten an ESP32...');
   const b = new Uint8Array(48000);
-  for (let i = 0; i < gray.length; i++) {
-    if (gray[i] >= 128) b[Math.floor(i/8)] |= (0x80 >> (i%8));
-  }
-  fetch('/upload', {
-    method:'POST',
-    headers:{'Content-Type':'application/octet-stream'},
-    body:b
-  })
-    .then(r => { if(!r.ok) throw new Error(r.status); status('Anzeige erfolgreich aktualisiert!'); })
-    .catch(() => status('Fehler: Keine Verbindung zum ESP32.'));
+  for (let i = 0; i < gray.length; i++) { if (gray[i] >= 128) b[Math.floor(i/8)] |= (0x80 >> (i%8)); }
+  
+  const formData = new FormData();
+  formData.append('file', new Blob([b]), 'image.bin');
+  status('Sende an ESP32...');
+  fetch('/upload', { method: 'POST', body: formData })
+    .then(r => { if(!r.ok) throw new Error(); status('Erfolgreich aktualisiert!'); })
+    .catch(() => status('Verbindungsfehler zum ESP32.'));
 }
 </script></body></html>
 )=====";
@@ -151,101 +141,51 @@ void setup() {
   DEV_Module_Init();
   EPD_3IN97_Init();
   EPD_3IN97_Clear();
-
-  // PSRAM Allokations-Check
   BlackImage = (UBYTE *)ps_malloc(48000);
-  if (BlackImage == NULL) {
-    Serial.println("\nFEHLER: PSRAM nicht verfuegbar!");
-    Serial.println("Bitte 'OPI PSRAM' in den IDE-Tools aktivieren.");
-    return;
-  }
+  if (BlackImage == NULL) return;
 
-  Serial.print("Verbinde mit WLAN");
   WiFi.setAutoReconnect(true);
-  WiFi.persistent(true);
   WiFi.begin(ssid, password);
-  int retries = 0;
-  while (WiFi.status() != WL_CONNECTED && retries++ < 40) {
-    delay(500); Serial.print(".");
-  }
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("\nWiFi fehlgeschlagen! RESET druecken.");
-    return;
-  }
-  Serial.print("\nVerbunden! IP: ");
+  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
   Serial.println(WiFi.localIP());
-
   esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
   MDNS.begin("epaper");
   MDNS.addService("http", "tcp", 80);
 
   server.on("/", [](){ server.send(200, "text/html", INDEX_HTML); });
-  server.on("/upload", HTTP_POST, [](){
-    WiFiClient client = server.client();
-    int total = 0;
-    unsigned long lastData = millis();
-    while (total < 48000 && millis() - lastData < 10000) {
-      if (client.available()) {
-        int bytesRead = client.readBytes(&BlackImage[total], 48000 - total);
-        total += bytesRead;
-        lastData = millis();
+  server.on("/upload", HTTP_POST, 
+    [](){ // Antwort-Handler
+      if (uploadTotal == 48000) {
+        EPD_3IN97_Display(BlackImage);
+        server.send(200, "text/plain", "OK");
+      } else { server.send(400, "text/plain", "Error"); }
+    },
+    [](){ // Upload-Handler (Chunks)
+      HTTPUpload& upload = server.upload();
+      if (upload.status == UPLOAD_FILE_START) uploadTotal = 0;
+      else if (upload.status == UPLOAD_FILE_WRITE) {
+        size_t toCopy = std::min((size_t)upload.currentSize, (size_t)(48000 - uploadTotal));
+        memcpy(&BlackImage[uploadTotal], upload.buf, toCopy);
+        uploadTotal += toCopy;
       }
     }
-    if (total == 48000) {
-      EPD_3IN97_Display(BlackImage);
-      server.send(200, "text/plain", "OK");
-      Serial.println("Display aktualisiert.");
-    } else {
-      server.send(400, "text/plain", "Unvollstaendig");
-    }
-  });
-
+  );
   server.begin();
-  Serial.println("Webserver aktiv. http://epaper.local");
 }
 
 void loop() {
   if (millis() - lastWiFiCheck > WIFI_CHECK_INTERVAL) {
     lastWiFiCheck = millis();
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("Reconnect...");
-      WiFi.disconnect();
-      WiFi.begin(ssid, password);
-      unsigned long start = millis();
-      while (WiFi.status() != WL_CONNECTED && millis() - start < 10000) { delay(500); }
-      if (WiFi.status() == WL_CONNECTED) MDNS.begin("epaper");
-    }
+    if (WiFi.status() != WL_CONNECTED) { WiFi.disconnect(); WiFi.begin(ssid, password); }
   }
   server.handleClient();
-  delay(10);
+  delay(1);
 }
 ```
 
 ---
 
-## 4. Ausführliche Bedienungsanleitung
-
-### 4.1 Zugriff auf die Bedienoberfläche
-Das Gerät ist permanent über das WLAN erreichbar. Sie können das Interface von jedem Endgerät im selben Netzwerk aufrufen:
-1.  **Variante A:** Öffnen Sie Ihren Browser und geben Sie `http://epaper.local` ein.
-2.  **Variante B:** Alternativ nutzen Sie die IP-Adresse (z. B. `192.168.178.50`) aus dem "Seriellen Monitor" der Arduino IDE (Baudrate: 115200).
-
-### 4.2 Texte gestalten und senden (HTML-Editor)
-Das obere Textfeld interpretiert Standard-HTML-Tags für professionelle Layouts. Das Rendering findet direkt in Ihrem Browser statt und wird als optimiertes Bild übertragen:
-*   `<h1>Titel</h1>` für große Überschriften.
-*   `<br>` für eine neue Zeile, `<p>...</p>` für Absätze.
-*   `<b>Fett</b>` oder `<i>Kursiv</i>`.
-
-> **Hinweis:** Da das Rendering lokal erfolgt, stehen nur die auf Ihrem Gerät installierten System-Schriftarten zur Verfügung. Externe Bilder (`<img>`) werden aus Sicherheitsgründen nicht unterstützt.
-
-### 4.3 Bilder und Fotos übertragen
-Das System führt eine automatische Skalierung (Zentrierung mit weißen Rändern) und ein **Floyd-Steinberg-Dithering** durch. Dieses Verfahren simuliert Graustufen auf dem reinen Schwarz-Weiß-Display durch eine intelligente Punktverteilung, wodurch Fotos sehr natürlich wirken.
-
----
-
-## 5. Wartung & Problembehebung
-*   **Keine Verbindung?** Prüfen Sie den Seriellen Monitor (115200 Baud). Er gibt an, ob WLAN verbunden ist oder ob der PSRAM-Speicher fehlt. Das Gerät versucht alle 30 Sekunden automatisch, eine verlorene WLAN-Verbindung wiederherzustellen.
-*   **Laden:** Schließen Sie das Board einfach über USB-C an. Das Gerät kann während des Ladens uneingeschränkt weiterbetrieben werden.
-
----
-**Hardware-Referenz:** SDA(6), SCL(5) | Mic(15), Speaker(7) | Batterie-Sensing(GPIO 4).
+## 4. Bedienung
+1.  Rufen Sie `http://epaper.local` auf.
+2.  Gestalten Sie Text mit HTML-Tags oder wählen Sie ein Bild aus.
+3.  Klicken Sie auf den entsprechenden Sende-Button. Das Display aktualisiert sich automatisch.
