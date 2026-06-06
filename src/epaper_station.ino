@@ -578,7 +578,7 @@ void setup() {
       HTTPUpload& upload = server.upload();
       if (upload.status == UPLOAD_FILE_START) uploadTotal = 0;
       else if (upload.status == UPLOAD_FILE_WRITE) {
-        size_t toCopy = std::min((size_t)upload.currentSize, (size_T)(48000 - uploadTotal));
+        size_t toCopy = std::min((size_t)upload.currentSize, (size_t)(48000 - uploadTotal));
         memcpy(&BlackImage[uploadTotal], upload.buf, toCopy);
         uploadTotal += toCopy;
       }
